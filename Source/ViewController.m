@@ -25,9 +25,9 @@
 {
     static ViewController* instance = nil;
     static dispatch_once_t once;
-    
+
     dispatch_once(&once, ^{
-        instance = [[self.class alloc] init];
+        instance = [[ViewController alloc] init];
         NSLog(@"初始化----%@");
         instance.semaphore = dispatch_semaphore_create(1); //默认创建的信号为1
         instance.queue = dispatch_queue_create("readItNow", DISPATCH_QUEUE_SERIAL);
@@ -48,19 +48,19 @@
 
 -(NSArray *)caculateNumber:(NSString *)primary
 {
-    
+
     long money = primary.doubleValue*10000000000/100000000;// 钱数 单位是(分)
-    
+
     NSString *str = [NSString stringWithFormat:@"%ld",money];
-    
+
     NSArray *temArr = @[@"", @"万", @"亿"];
-    
+
     NSArray *arr = @[@"十", @"百", @"千"];
-    
+
     NSMutableArray <NSString *>*lArr = [[NSMutableArray alloc] init];
-    
+
     long preMoney = money / 100;
-    
+
     if (money%10 == 0 && money%100 == 0) {
         //不用展示
     }else{
@@ -70,18 +70,18 @@
         lastMoney = lastMoney /10;
         [lArr insertObject:[NSString stringWithFormat:@"%ld",lastMoney%10] atIndex:1];
     }
-    
+
     NSString *preMoneyStr = [NSString stringWithFormat:@"%ld",preMoney];
-    
+
     for (int i=0; i<preMoneyStr.length; i++) {
-        
+
         int a = preMoney % 10;
         preMoney = preMoney/10;
-        
+
         NSString *strCon = @"";
-        
+
         if(i%4 == 0){
-            
+
             NSString *aStr = [NSString stringWithFormat:@"%d",a];
             strCon = [NSString stringWithFormat:@"%@%@",a==0?@"":aStr,temArr[i/4]];
         }else{
@@ -102,7 +102,7 @@
     if ([lArr containsObject:@"点"]||[lArr containsObject:@"万"]||[lArr containsObject:@"亿"]) {
         NSArray *tmpedArr = @[@"点",@"万",@"亿"];
         for (int i=0; i<3; i++) {
-            
+
             if([lArr containsObject:tmpedArr[i]]){
                 NSUInteger index = [lArr indexOfObject:tmpedArr[i]];
                 if ([lArr[index - 1] isEqualToString:@"0"] && i==0 && index > 1) {
@@ -119,7 +119,7 @@
     }
     [lArr addObject:@"元"];
     NSString *final = [lArr componentsJoinedByString:@""];
-    
+
     NSLog(@"?????%@\n%@",str, final );
     NSString *tempPay;
     if([self.payType isEqualToString:@"alipay"]){
@@ -142,77 +142,77 @@
 
 
 - (void)hecheng:(NSArray *)fileNameArray{
-    
+
     /************************合成音频并播放*****************************/
     NSMutableArray *audioAssetArray = [[NSMutableArray alloc] init];
     NSMutableArray *durationArray = [[NSMutableArray alloc] init];
     [durationArray addObject:@(0)];
-    
+
     AVMutableComposition *composition = [AVMutableComposition composition];
-    
+
     CMTime allTime = kCMTimeZero;
-    
+
     for (NSInteger i = 0; i < fileNameArray.count; i++) {
         NSString *auidoPath = [[NSBundle mainBundle] pathForResource:[NSString stringWithFormat:@"%@",fileNameArray[i]] ofType:@"mp3"];
         AVURLAsset *audioAsset = [AVURLAsset assetWithURL:[NSURL fileURLWithPath:auidoPath]];
         [audioAssetArray addObject:audioAsset];
-        
-        
+
+
         // 音频轨道
         AVMutableCompositionTrack *audioTrack = [composition addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:0];
-        
+
         // 音频素材轨道
         AVAssetTrack *audioAssetTrack = [[audioAsset tracksWithMediaType:AVMediaTypeAudio] firstObject];
-        
-        
+
+
         // 音频合并 - 插入音轨文件
         [audioTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, audioAsset.duration) ofTrack:audioAssetTrack atTime:allTime error:nil];
-        
+
         // 更新当前的位置
         allTime = CMTimeAdd(allTime, audioAsset.duration);
-        
+
     }
-    
+
     // 合并后的文件导出 - `presetName`要和之后的`session.outputFileType`相对应。
     AVAssetExportSession *session = [[AVAssetExportSession alloc] initWithAsset:composition presetName:AVAssetExportPresetAppleM4A];
     NSString *outPutFilePath = [[NSHomeDirectory() stringByAppendingPathComponent:@"Documents"]  stringByAppendingPathComponent:@"test.m4a"];
-    
+
     if ([[NSFileManager defaultManager] fileExistsAtPath:outPutFilePath]) {
         [[NSFileManager defaultManager] removeItemAtPath:outPutFilePath error:nil];
     }
-    
+
     // 查看当前session支持的fileType类型
     NSLog(@"---%@",[session supportedFileTypes]);
     session.outputURL = [NSURL fileURLWithPath:outPutFilePath];
     session.outputFileType = AVFileTypeAppleM4A; //与上述的`present`相对应
     session.shouldOptimizeForNetworkUse = YES;   //优化网络
-    
+
     [session exportAsynchronouslyWithCompletionHandler:^{
-        
+
         NSLog(@"%@",[NSThread currentThread]);
-        
+
         if (session.status == AVAssetExportSessionStatusCompleted) {
             NSLog(@"合并成功----%@", outPutFilePath);
-            
+
             NSURL *url = [NSURL fileURLWithPath:outPutFilePath];
-            
+
             static SystemSoundID soundID = 0;
-            
+
             AudioServicesCreateSystemSoundID((__bridge CFURLRef _Nonnull)(url), &soundID);
-            
+
             AudioServicesPlayAlertSoundWithCompletion(soundID, ^{
                 NSLog(@"播放完成");
                 AudioServicesDisposeSystemSoundID(soundID);
                 dispatch_semaphore_signal(self.semaphore); //播放完毕，信号量 +1
             });
-            
+
         } else {
             // 其他情况, 具体请看这里`AVAssetExportSessionStatus`.
         }
-        
+
     }];
-    
-    
+
+
 }
 
 

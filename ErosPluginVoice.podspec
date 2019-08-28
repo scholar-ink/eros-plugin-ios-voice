@@ -10,6 +10,7 @@ Pod::Spec.new do |s|
   s.ios.deployment_target = "8.0"
   s.source = { :git => 'https://github.com/bmfe/eros-plugin-ios-voice.git', :tag => s.version.to_s }
   s.source_files = "Source/*.{h,m,mm}"
+  s.resources = 'Resources/*'
   s.requires_arc = true
   s.dependency 'GTSDK', '2.2.0.0-noidfa'
 end
